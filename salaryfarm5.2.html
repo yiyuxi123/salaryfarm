@@ -1,0 +1,1110 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#f2fcf5">
+    <title>薪资森林</title>
+    <link rel="manifest" href="data:application/json;base64,eyJuYW1lIjoi6Iaq6LWE5qOu5p6XIiwiYmFja2dyb3VuZF9jb2xvciI6IiNmMmZjZjUiLCJkaXNwbGF5IjoiZnVsbHNjcmVlbiIsImljb25zIjpW1dXX0=">
+    
+    <!-- 核心库 -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <!-- 字体 -->
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&family=ZCOOL+KuaiLe&family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['"Noto Sans SC"', '"Nunito"', 'system-ui', 'sans-serif'],
+                        cute: ['"ZCOOL KuaiLe"', 'cursive'],
+                    },
+                    colors: {
+                        forest: { 
+                            50: '#f2fcf5', 100: '#e1f8e8', 200: '#c3efd2', 
+                            300: '#94e0b3', 400: '#5cc98d', 500: '#4a7c59', 
+                            600: '#3a6346', 700: '#2d5036', 800: '#24402d', 900: '#1d3325' 
+                        },
+                        earth: { 100: '#fdf3e7', 400: '#d4a76a', 500: '#a86f4c', 600: '#8b5a3e' },
+                        sky: { day: '#e0f7fa', noon: '#b3e5fc', dusk: '#fff3e0', night: '#263238' }
+                    },
+                    animation: {
+                        'float': 'float 6s ease-in-out infinite',
+                        'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                        'leaf-fall': 'leafFall 12s linear infinite',
+                        'pop': 'pop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+                    },
+                    keyframes: {
+                        float: { '0%, 100%': { transform: 'translateY(0)' }, '50%': { transform: 'translateY(-8px)' } },
+                        leafFall: {
+                            '0%': { transform: 'translateY(-10vh) rotate(0deg) translateX(0)', opacity: '0' },
+                            '10%': { opacity: '0.8' },
+                            '100%': { transform: 'translateY(110vh) rotate(720deg) translateX(50px)', opacity: '0' }
+                        },
+                        pop: { '0%': { transform: 'scale(0.9)', opacity: '0' }, '100%': { transform: 'scale(1)', opacity: '1' } }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        [v-cloak] { display: none; }
+        body { 
+            background-color: #f2fcf5; 
+            color: #2c3e50; 
+            overflow: hidden; 
+            font-size: 16px;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        /* 真实时间天空系统 (柔和版) */
+        .sky-container {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -10;
+            background: linear-gradient(to bottom, var(--sky-top), var(--sky-bottom));
+            transition: --sky-top 10s, --sky-bottom 10s; 
+            will-change: background;
+        }
+
+        /* 森林背景插画 */
+        .forest-bg {
+            position: fixed; bottom: 0; left: 0; width: 100%; height: 50%; z-index: -5;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1440 320'%3E%3Cpath fill='%234a7c59' fill-opacity='0.2' d='M0,224L48,213.3C96,203,192,181,288,181.3C384,181,480,203,576,224C672,245,768,267,864,261.3C960,256,1056,224,1152,197.3C1248,171,1344,149,1392,138.7L1440,128L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z'%3E%3C/path%3E%3C/svg%3E");
+            background-size: cover; background-position: bottom; pointer-events: none;
+        }
+        .forest-fg {
+            position: fixed; bottom: 0; left: 0; width: 100%; height: 35%; z-index: -4;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1440 320'%3E%3Cpath fill='%232d5036' fill-opacity='0.4' d='M0,96L48,112C96,128,192,160,288,186.7C384,213,480,235,576,213.3C672,192,768,128,864,128C960,128,1056,192,1152,208C1248,224,1344,192,1392,176L1440,160L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z'%3E%3C/path%3E%3C/svg%3E");
+            background-size: cover; background-position: bottom; pointer-events: none;
+        }
+
+        /* 治愈系毛玻璃 */
+        .glass-card {
+            background: rgba(255, 255, 255, 0.75);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.6);
+            box-shadow: 0 8px 32px rgba(100, 140, 110, 0.1);
+            color: #2c3e50;
+        }
+        
+        .modal-overlay { background: rgba(45, 80, 54, 0.3); backdrop-filter: blur(4px); }
+
+        /* 农田样式优化 */
+        .farm-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(85px, 1fr));
+            gap: 12px;
+            width: 100%;
+        }
+        @media (max-width: 640px) { .farm-grid { grid-template-columns: repeat(4, 1fr); gap: 8px; } }
+        @media (max-width: 380px) { .farm-grid { grid-template-columns: repeat(3, 1fr); } }
+
+        .farm-plot {
+            aspect-ratio: 1; position: relative; border-radius: 16px;
+            background: #e8dccc;
+            box-shadow: inset 0 4px 10px rgba(168, 111, 76, 0.15), 0 4px 8px rgba(0,0,0,0.05);
+            transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+            z-index: 1; will-change: transform;
+            overflow: hidden; /* 确保内嵌面板不溢出 */
+        }
+        .farm-plot:active { transform: scale(0.95); }
+        .farm-plot.locked {
+            background: repeating-linear-gradient(45deg, #e0e0e0, #e0e0e0 10px, #d6d6d6 10px, #d6d6d6 20px);
+            opacity: 0.8; box-shadow: none;
+        }
+        .farm-plot.withered {
+            background: #a1887f;
+            filter: grayscale(1);
+        }
+
+        /* 农田信息遮罩 (优化后：圆角匹配 + 底部滑入 + 非全覆盖) */
+        .plot-info-overlay {
+            position: absolute; 
+            bottom: 0; left: 0; width: 100%; height: 100%; 
+            background: rgba(255, 255, 255, 0.85); /* 柔和白底 */
+            backdrop-filter: blur(8px);
+            border-radius: 16px; /* 完美匹配农田圆角 */
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            opacity: 0; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            transform: translateY(10px); /* 默认下沉 */
+            z-index: 20; padding: 4px; text-align: center;
+            pointer-events: none;
+        }
+        
+        /* 交互状态：显示信息 */
+        @media (hover: hover) { 
+            .farm-plot:hover .plot-info-overlay { 
+                opacity: 1; 
+                transform: translateY(0); 
+                pointer-events: auto;
+            } 
+        }
+        .farm-plot.show-info .plot-info-overlay { 
+            opacity: 1; 
+            transform: translateY(0); 
+            pointer-events: auto;
+        }
+        
+        .focus-overlay { 
+            background: radial-gradient(circle at center, #1d3325 0%, #0f172a 100%); 
+            z-index: 9999; 
+            opacity: 1;
+        }
+
+        /* 经验条 Tooltip */
+        .xp-tooltip {
+            position: absolute; top: 110%; left: 50%; transform: translateX(-50%);
+            background: rgba(0,0,0,0.8); color: white;
+            padding: 8px 12px; border-radius: 8px;
+            font-size: 12px; white-space: nowrap;
+            opacity: 0; visibility: hidden;
+            transition: all 0.2s ease;
+            pointer-events: none; z-index: 100;
+        }
+        .group:hover .xp-tooltip { opacity: 1; visibility: visible; top: 120%; }
+
+        ::-webkit-scrollbar { width: 4px; height: 4px; }
+        ::-webkit-scrollbar-thumb { background: rgba(74, 124, 89, 0.2); border-radius: 3px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+
+        .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
+        :root { --sky-top: #e0f7fa; --sky-bottom: #ffffff; }
+    </style>
+</head>
+<body class="transition-colors duration-1000">
+
+<div id="app" v-cloak class="h-screen flex flex-col relative overflow-hidden font-sans" @touchstart="initAudioContext">
+
+    <!-- 真实时间天空 & 天气系统 -->
+    <div class="sky-container" :style="skyStyle"></div>
+    <div class="weather-layer">
+        <!-- 雨滴粒子 -->
+        <div v-if="game.weather === 'rain'" v-for="n in 30" :key="'rain'+n" class="rain-particle" 
+             :style="{ left: Math.random()*100+'%', animationDuration: 0.5+Math.random()*0.5+'s', animationDelay: Math.random()+'s' }"></div>
+        <!-- 雪花粒子 -->
+        <div v-if="game.weather === 'snow'" v-for="n in 20" :key="'snow'+n" class="snow-particle w-1.5 h-1.5 opacity-80"
+             :style="{ left: Math.random()*100+'%', animationDuration: 3+Math.random()*5+'s', animationDelay: Math.random()+'s' }"></div>
+    </div>
+    <div class="forest-bg" :style="{ filter: `brightness(${brightness})` }"></div>
+    <div class="forest-fg" :style="{ filter: `brightness(${brightness * 0.9})` }"></div>
+    
+    <!-- 氛围粒子 (树叶/光斑) -->
+    <div v-if="game.weather === 'sunny' || game.weather === 'cloudy'" class="fixed inset-0 pointer-events-none overflow-hidden z-0">
+        <div v-for="p in particles" :key="p.id" class="absolute opacity-60 animate-leaf-fall text-forest-300" :style="p.style">
+             <span class="text-xl">{{ p.char }}</span>
+        </div>
+    </div>
+
+    <!-- 顶部导航 -->
+    <!-- 优化：移动端减小 padding -->
+    <nav class="h-16 flex items-center justify-between px-2 sm:px-6 z-50 shrink-0 pt-safe">
+        <!-- Logo -->
+        <div class="flex items-center gap-2 sm:gap-3 glass-card px-2 sm:px-4 py-1.5 sm:py-2 rounded-full shadow-sm">
+            <div class="bg-forest-500 p-1.5 rounded-full text-white shadow-md animate-pulse-slow">
+                <i data-lucide="sprout" class="w-5 h-5"></i>
+            </div>
+            <div>
+                <h1 class="font-bold text-lg tracking-wide text-forest-800 font-cute leading-none mt-1 hidden xs:block">薪资森林</h1>
+                <p class="text-[10px] text-forest-600/70 font-bold hidden sm:block">{{ formattedRealTime }}</p>
+            </div>
+        </div>
+        
+        <div class="flex items-center gap-2 sm:gap-3">
+            <!-- 天气指示器 (移动端仅图标) -->
+            <button @click="fetchRealWeather" class="flex items-center gap-2 px-2 sm:px-3 py-1.5 rounded-full glass-card border-white/50 hover:bg-white/40 transition-colors" :title="'当前天气: ' + weatherInfo.desc">
+                <i :data-lucide="weatherInfo.icon" class="w-4 h-4 text-sky-600"></i>
+                <span class="text-xs font-bold text-sky-700 hidden sm:block">{{ weatherInfo.desc }}</span>
+            </button>
+
+            <!-- 时段/天气 Buff -->
+            <div v-if="currentBuff.active" class="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-full glass-card border-forest-200">
+                <span class="w-2 h-2 rounded-full animate-ping" :class="currentBuff.color"></span>
+                <span class="text-xs font-bold text-forest-700">{{ currentBuff.text }}</span>
+            </div>
+
+            <!-- 资源栏 (移动端紧凑化) -->
+            <div class="flex items-center gap-2 sm:gap-4 glass-card px-2 sm:px-4 py-1 sm:py-1.5 rounded-full shadow-sm">
+                <div class="flex items-center gap-1 text-amber-500 font-bold text-xs sm:text-sm" title="金币">
+                    <i data-lucide="coins" class="w-3.5 h-3.5 sm:w-4 sm:h-4 fill-amber-400"></i> {{ formatNumber(game.coins) }}
+                </div>
+                <div class="w-px h-3 bg-forest-200"></div>
+                <!-- 等级 & 经验条 -->
+                <div class="flex items-center gap-1 text-forest-600 font-bold text-xs sm:text-sm relative group cursor-help">
+                    <i data-lucide="crown" class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-forest-400"></i> Lv.{{ game.level }}
+                    <div class="xp-tooltip flex flex-col gap-1 items-center">
+                        <span>经验: {{ game.xp }} / {{ nextLevelXp }}</span>
+                        <div class="w-24 h-1.5 bg-white/20 rounded-full overflow-hidden">
+                            <div class="h-full bg-emerald-400" :style="{ width: (game.xp / nextLevelXp * 100) + '%' }"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 移动端视图切换 -->
+            <div class="sm:hidden flex bg-white/50 rounded-full p-1 border border-white/40 backdrop-blur shadow-sm shrink-0">
+                <button @click="viewMode = 'salary'" class="p-1.5 rounded-full transition-all" :class="viewMode === 'salary' ? 'bg-forest-500 text-white shadow-sm' : 'text-forest-600'">
+                    <i data-lucide="banknote" class="w-4 h-4"></i>
+                </button>
+                <button @click="viewMode = 'farm'" class="p-1.5 rounded-full transition-all" :class="viewMode === 'farm' ? 'bg-forest-500 text-white shadow-sm' : 'text-forest-600'">
+                    <i data-lucide="trees" class="w-4 h-4"></i>
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- 主体区域：双栏布局 -->
+    <main class="flex-1 flex overflow-hidden relative p-4 gap-6 z-10 pb-32 sm:pb-24"> 
+        
+        <!-- 左侧：工资记录 -->
+        <section class="flex-1 flex flex-col glass-card rounded-[32px] overflow-hidden transition-all duration-500 transform absolute inset-4 sm:inset-auto sm:relative sm:w-2/5 shadow-sm border-white/60"
+                 :class="viewMode === 'salary' ? 'translate-x-0 opacity-100 z-20' : '-translate-x-full opacity-0 z-0 sm:translate-x-0 sm:opacity-100 sm:z-auto'">
+            
+            <div class="p-6 pb-2 shrink-0">
+                <div class="bg-gradient-to-br from-forest-50 to-white rounded-3xl p-5 border border-forest-100 relative overflow-hidden group mb-4 shadow-sm">
+                    <div class="absolute -right-6 -top-6 bg-forest-200/50 w-24 h-24 rounded-full blur-xl group-hover:bg-forest-300/50 transition-all"></div>
+                    <p class="text-xs text-forest-600 font-bold mb-1 tracking-wider">本年累计实发</p>
+                    <div class="text-3xl font-black text-forest-800 tracking-tight">{{ formatMoney(salaryStats.yearTotal) }}</div>
+                    <div class="text-xs mt-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-forest-100 text-forest-700 font-bold">
+                        <i data-lucide="trending-up" class="w-3 h-3"></i> 财富积累中
+                    </div>
+                </div>
+                
+                <div class="flex justify-between items-center mb-2">
+                    <h3 class="font-bold text-lg text-forest-800 flex items-center gap-2">
+                        <i data-lucide="history" class="w-5 h-5 text-forest-500"></i> 收支明细
+                    </h3>
+                    <button @click="openSalaryForm()" class="bg-forest-500 hover:bg-forest-600 text-white px-4 py-2 rounded-xl text-sm font-bold shadow-lg shadow-forest-500/30 flex items-center gap-2 transition-all active:scale-95">
+                        <i data-lucide="plus" class="w-4 h-4"></i> 记一笔
+                    </button>
+                </div>
+            </div>
+
+            <div class="flex-1 overflow-y-auto px-6 pb-6 custom-scroll">
+                <div class="space-y-3 pb-4">
+                    <div v-for="record in sortedRecords" :key="record.id" 
+                         class="bg-white/50 hover:bg-white/80 p-4 rounded-2xl border border-forest-50 hover:border-forest-200 transition-all cursor-pointer group"
+                         @click="openSalaryForm(record)">
+                        <div class="flex justify-between items-center mb-2">
+                            <div>
+                                <div class="font-bold text-lg text-forest-900">{{ formatMoney(record.net) }}</div>
+                                <div class="text-xs text-forest-500 font-medium">{{ formatDate(record.date) }} · 实发</div>
+                            </div>
+                            <div class="text-xs bg-amber-100 text-amber-700 px-2 py-1 rounded-lg font-bold flex items-center gap-1">
+                                +{{ Math.floor(record.net * 0.01 * (isPayDay ? 1.2 : 1)) }} <i data-lucide="coins" class="w-3 h-3"></i>
+                            </div>
+                        </div>
+                        <div class="flex justify-between text-xs text-gray-400">
+                            <span>税前: {{ formatNumber(record.gross) }}</span>
+                            <div class="opacity-0 group-hover:opacity-100 transition-opacity text-forest-500 font-bold">编辑 ></div>
+                        </div>
+                    </div>
+                    <div v-if="salaryRecords.length === 0" class="text-center py-10 opacity-50 flex flex-col items-center">
+                        <div class="w-24 h-24 bg-forest-100 rounded-full flex items-center justify-center mb-4 text-4xl">🍃</div>
+                        <p class="text-sm font-bold text-forest-800">暂无记录</p>
+                        <p class="text-xs text-forest-600">开始记录，种下财富的种子</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 右侧：我的农场 -->
+        <section class="flex-[1.5] flex flex-col glass-card rounded-[32px] overflow-hidden transition-all duration-500 transform absolute inset-4 sm:inset-auto sm:relative sm:w-3/5 shadow-sm border-white/60 z-10"
+                 :class="viewMode === 'farm' ? 'translate-x-0 opacity-100 z-20' : 'translate-x-full opacity-0 z-0 sm:translate-x-0 sm:opacity-100 sm:z-auto'">
+            
+            <div class="p-6 flex justify-between items-start shrink-0">
+                <div>
+                    <h2 class="text-2xl font-cute text-forest-900 flex items-center gap-2">
+                        我的森林 <span class="text-xs font-sans px-2 py-0.5 bg-forest-100 text-forest-700 rounded-full font-bold">{{ seasonName }}</span>
+                    </h2>
+                    <p class="text-xs text-forest-500 mt-1 font-bold flex items-center gap-1" :class="game.marketRate >= 1 ? 'text-rose-500' : 'text-emerald-500'">
+                        <i :data-lucide="game.marketRate >= 1 ? 'trending-up' : 'trending-down'" class="w-3 h-3"></i> 市场指数 {{ Math.round(game.marketRate * 100) }}%
+                    </p>
+                </div>
+                
+                <div v-if="offlineReport" class="hidden sm:block absolute top-6 left-1/2 -translate-x-1/2 bg-white/90 rounded-2xl p-3 shadow-lg border border-amber-100 animate-pop z-30 flex items-center gap-3">
+                    <div>
+                        <h4 class="font-bold text-xs text-amber-600 flex items-center gap-1"><i data-lucide="moon" class="w-3 h-3"></i> 欢迎回归</h4>
+                        <p class="text-[10px] text-forest-700 leading-relaxed">
+                            离线 {{ offlineReport.duration }}<br/>
+                            <span class="text-emerald-600 font-bold">{{ offlineReport.growth }}</span>
+                        </p>
+                    </div>
+                    <button @click="offlineReport = null" class="p-1 hover:bg-slate-100 rounded-full"><i data-lucide="x" class="w-3 h-3"></i></button>
+                </div>
+            </div>
+
+            <!-- 农田区域 -->
+            <div class="flex-1 overflow-y-auto custom-scroll relative p-4" @click="activePlotId = null">
+                <div class="min-h-full flex items-center justify-center py-12">
+                    <div class="farm-grid max-w-2xl w-full">
+                        <div v-for="plot in game.plots" :key="plot.id" 
+                             class="farm-plot flex items-center justify-center cursor-pointer group relative select-none"
+                             :class="{ 'locked': plot.locked, 'show-info': activePlotId === plot.id, 'withered': plot.withered }"
+                             @click.stop="handlePlotClick(plot)">
+                            
+                            <!-- 锁定 -->
+                            <div v-if="plot.locked" class="text-center opacity-60">
+                                <i data-lucide="lock" class="w-5 h-5 mx-auto mb-1 text-slate-500"></i>
+                                <span class="text-[10px] text-slate-500 font-bold">{{ plot.unlockPrice }}</span>
+                            </div>
+
+                            <!-- 枯萎 -->
+                            <div v-else-if="plot.withered" class="text-center">
+                                <span class="text-4xl filter grayscale contrast-50 opacity-80">🥀</span>
+                                <div class="text-[9px] text-white bg-black/40 px-1 rounded mt-1">已枯萎</div>
+                            </div>
+
+                            <!-- 作物 -->
+                            <div v-else-if="plot.cropId" class="w-full h-full flex items-center justify-center relative">
+                                <div class="text-4xl sm:text-5xl filter drop-shadow-lg transition-transform duration-500 z-10"
+                                     :class="isMature(plot) ? 'animate-float' : ''"
+                                     :style="{ transform: `scale(${getGrowthScale(plot)})` }">
+                                    {{ getPlantIcon(plot.cropId, plot) }}
+                                </div>
+                                
+                                <!-- 进度条 -->
+                                <div v-if="!isMature(plot)" class="absolute bottom-2 left-3 right-3 h-1 bg-white/50 rounded-full overflow-hidden z-10">
+                                    <div class="h-full bg-forest-500 transition-all duration-1000" :style="{ width: getGrowthPercent(plot) + '%' }"></div>
+                                </div>
+
+                                <!-- 倒计时 (显式) -->
+                                <div v-if="!isMature(plot)" class="absolute top-1 left-1/2 -translate-x-1/2 bg-black/40 text-white text-[9px] px-2 py-0.5 rounded-full backdrop-blur-sm pointer-events-none font-mono tracking-tighter z-30 opacity-90 whitespace-nowrap">
+                                    {{ getTimeLeftSimple(plot) }}
+                                </div>
+
+                                <!-- 收获提示 -->
+                                <div v-if="isMature(plot)" class="absolute -top-2 -right-2 bg-amber-400 text-white p-1 rounded-full shadow-md animate-bounce z-20">
+                                    <i data-lucide="check" class="w-3 h-3 stroke-[3]"></i>
+                                </div>
+
+                                <!-- 内嵌详情面板 -->
+                                <div class="plot-info-overlay">
+                                    <div class="text-xs font-bold text-forest-800 mb-1">{{ PLANTS[plot.cropId].name }}</div>
+                                    <div class="text-[10px] text-forest-600 mb-1">
+                                        {{ isMature(plot) ? '✅ 可收获' : '🌱 生长中' }}
+                                    </div>
+                                    <div class="text-[10px] font-mono bg-forest-100 px-2 py-0.5 rounded text-forest-700">
+                                        {{ getTimeLeft(plot) }}
+                                    </div>
+                                    <div class="mt-2 text-[10px] text-amber-600 font-bold">
+                                        预计: {{ getEstimatedProfit(plot) }}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 空地 -->
+                            <div v-else class="opacity-0 group-hover:opacity-40 transition-opacity">
+                                <i data-lucide="shovel" class="w-8 h-8 text-forest-800/50"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 商店栏 -->
+            <div class="bg-white/60 border-t border-forest-100 p-4 shrink-0 backdrop-blur-sm">
+                <div class="flex justify-between items-center mb-2">
+                    <h3 class="text-xs font-bold text-forest-800 flex items-center gap-1"><i data-lucide="shopping-bag" class="w-3 h-3"></i> 种子市场</h3>
+                    <div class="flex gap-1">
+                        <button v-for="cat in ['全部','速生','稀有']" @click="storeFilter = cat" 
+                            class="text-[10px] px-2 py-0.5 rounded-full transition-colors"
+                            :class="storeFilter === cat ? 'bg-forest-500 text-white' : 'bg-white text-forest-600'">{{cat}}</button>
+                    </div>
+                </div>
+                <div class="flex gap-3 overflow-x-auto custom-scroll pb-2">
+                    <div v-for="plant in filteredPlants" :key="plant.id" 
+                         @click="selectSeed(plant.id)"
+                         class="flex-shrink-0 w-20 bg-white hover:bg-forest-50 rounded-xl p-2 cursor-pointer border transition-all relative group shadow-sm"
+                         :class="[
+                            selectedSeed === plant.id ? 'border-forest-500 ring-1 ring-forest-500 bg-forest-50' : 'border-transparent',
+                            game.level < plant.level ? 'opacity-50 grayscale' : ''
+                         ]">
+                        <div class="text-center text-2xl mb-1">{{ plant.icon }}</div>
+                        <div class="text-center text-[10px] font-bold truncate text-forest-900">{{ plant.name }}</div>
+                        <div class="flex justify-center items-center gap-0.5 mt-1 text-[10px] text-amber-600 font-bold">
+                            {{ Math.round(plant.price * game.marketRate) }} <i data-lucide="coins" class="w-2.5 h-2.5"></i>
+                        </div>
+                        <div v-if="game.level < plant.level" class="absolute inset-0 flex items-center justify-center bg-white/80 rounded-xl text-xs font-bold text-slate-500">
+                            Lv.{{ plant.level }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- 底部悬浮功能坞 (Dock) -->
+    <!-- 点击外部收起遮罩 -->
+    <div v-if="isDockExpanded" class="fixed inset-0 z-30" @click="isDockExpanded = false"></div>
+    
+    <div class="fixed bottom-8 left-1/2 -translate-x-1/2 z-40 transition-all duration-500 ease-[cubic-bezier(0.19,1,0.22,1)]"
+         :class="isDockExpanded ? 'w-[90vw] max-w-md' : 'w-14'">
+         
+        <div class="bg-white/80 backdrop-blur-2xl border border-white/60 shadow-2xl overflow-hidden transition-all duration-500 ease-[cubic-bezier(0.19,1,0.22,1)] relative"
+             :class="isDockExpanded ? 'rounded-[2rem] h-auto p-3' : 'rounded-full h-14 w-14 hover:scale-110 cursor-pointer flex items-center justify-center'"
+             @click.stop="!isDockExpanded && (isDockExpanded = true)">
+             
+             <div v-if="!isDockExpanded" class="text-forest-600 animate-pop">
+                 <i data-lucide="layout-grid" class="w-6 h-6"></i>
+             </div>
+
+             <div v-else class="flex justify-between items-center w-full animate-pop">
+                 <div class="flex gap-2 flex-1 justify-around">
+                     <!-- 档案按钮 -->
+                     <button @click="handleDockAction('profile')" class="flex flex-col items-center gap-1 p-2 rounded-xl hover:bg-slate-50 transition-colors group">
+                         <div class="bg-slate-100 p-2.5 rounded-lg text-slate-600 group-hover:bg-slate-500 group-hover:text-white transition-colors"><i data-lucide="user" class="w-5 h-5"></i></div>
+                         <span class="text-[10px] font-bold text-forest-800/70">档案</span>
+                     </button>
+                     <button @click="handleDockAction('tasks')" class="flex flex-col items-center gap-1 p-2 rounded-xl hover:bg-forest-50 transition-colors relative group">
+                         <div class="bg-forest-100 p-2.5 rounded-lg text-forest-600 group-hover:bg-forest-500 group-hover:text-white transition-colors"><i data-lucide="clipboard-list" class="w-5 h-5"></i></div>
+                         <span class="text-[10px] font-bold text-forest-800/70">任务</span>
+                         <span v-if="pendingTasks > 0" class="absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 rounded-full border border-white"></span>
+                     </button>
+                     <button @click="handleDockAction('focus')" class="flex flex-col items-center gap-1 p-2 rounded-xl hover:bg-emerald-50 transition-colors group">
+                         <div class="bg-emerald-100 p-2.5 rounded-lg text-emerald-600 group-hover:bg-emerald-500 group-hover:text-white transition-colors"><i data-lucide="timer" class="w-5 h-5"></i></div>
+                         <span class="text-[10px] font-bold text-forest-800/70">专注</span>
+                     </button>
+                     <button @click="handleDockAction('achievements')" class="flex flex-col items-center gap-1 p-2 rounded-xl hover:bg-amber-50 transition-colors group">
+                         <div class="bg-amber-100 p-2.5 rounded-lg text-amber-600 group-hover:bg-amber-500 group-hover:text-white transition-colors"><i data-lucide="trophy" class="w-5 h-5"></i></div>
+                         <span class="text-[10px] font-bold text-forest-800/70">成就</span>
+                     </button>
+                     <button @click="handleDockAction('encyclopedia')" class="flex flex-col items-center gap-1 p-2 rounded-xl hover:bg-sky-50 transition-colors group">
+                         <div class="bg-sky-100 p-2.5 rounded-lg text-sky-600 group-hover:bg-sky-500 group-hover:text-white transition-colors"><i data-lucide="book-open" class="w-5 h-5"></i></div>
+                         <span class="text-[10px] font-bold text-forest-800/70">图鉴</span>
+                     </button>
+                 </div>
+                 <button @click.stop="isDockExpanded = false" class="p-2 ml-2 bg-slate-100 rounded-full text-slate-400 hover:bg-slate-200 hover:text-slate-600 transition-colors shrink-0">
+                     <i data-lucide="x" class="w-4 h-4"></i>
+                 </button>
+             </div>
+        </div>
+    </div>
+    
+    <!-- 专注模式全屏遮罩 -->
+    <div v-if="isFocusing" class="fixed inset-0 z-[9999] focus-overlay flex flex-col items-center justify-center text-white p-4 animate-pop">
+        <div class="text-center mb-10">
+            <div class="text-6xl font-mono font-bold mb-2 tracking-widest">{{ getFocusDisplayTime() }}</div>
+            <p class="text-emerald-400/80 font-bold">专注中...</p>
+        </div>
+        <div class="relative w-48 h-48 mb-12">
+            <div class="absolute inset-0 border-4 border-emerald-900 rounded-full"></div>
+            <div class="absolute inset-0 border-4 border-emerald-500 rounded-full animate-spin border-t-transparent" style="animation-duration: 3s"></div>
+            <div class="absolute inset-0 flex items-center justify-center text-6xl animate-pulse">🌲</div>
+        </div>
+        <div class="bg-black/50 px-4 py-2 rounded-lg text-xs text-rose-300 mb-8 border border-rose-500/30">
+            ⚠ 放弃专注可能导致作物枯萎
+        </div>
+        <p class="text-lg opacity-60 mb-12 italic">"放下手机，感受森林的呼吸"</p>
+        <button @click="giveUpFocus" class="px-8 py-3 border border-white/20 rounded-full hover:bg-white/10 text-sm opacity-50 hover:opacity-100 transition-all pointer-events-auto">放弃专注</button>
+    </div>
+
+    <!-- 弹窗层 -->
+    <div v-if="activeModal" class="fixed inset-0 z-50 modal-overlay flex items-center justify-center p-4 pb-24" @click.self="activeModal = null">
+        <div class="bg-[#fdfbf7] w-full max-w-lg rounded-[32px] p-6 relative animate-pop shadow-2xl max-h-full flex flex-col border border-white/50">
+            <button @click="activeModal = null" class="absolute top-4 right-4 p-2 hover:bg-black/5 rounded-full text-slate-400 z-10"><i data-lucide="x" class="w-5 h-5"></i></button>
+            
+            <!-- 档案 (Profile) -->
+            <div v-if="activeModal === 'profile'" class="flex flex-col h-full min-h-0">
+                <h3 class="text-xl font-bold mb-4 flex items-center gap-2 text-slate-800 flex-shrink-0"><i data-lucide="user" class="w-6 h-6 text-slate-500"></i> 档案</h3>
+                <div class="space-y-6 overflow-y-auto flex-1 pr-2 custom-scroll">
+                    <!-- 个人信息卡 -->
+                    <div class="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm flex flex-col items-center">
+                        <div class="w-20 h-20 bg-forest-100 rounded-full flex items-center justify-center text-4xl mb-3 shadow-inner">🧑‍🌾</div>
+                        <h4 class="font-bold text-lg text-forest-800">森林守护者</h4>
+                        <div class="flex items-center gap-2 mt-1 text-sm text-slate-500 bg-slate-50 px-3 py-1 rounded-full">
+                            <i data-lucide="crown" class="w-4 h-4 text-amber-500"></i> Lv.{{ game.level }}
+                        </div>
+                        
+                        <!-- 发薪日设置 -->
+                        <div class="mt-4 flex items-center gap-2 text-sm bg-slate-50 px-3 py-2 rounded-lg border border-slate-100">
+                            <span class="text-slate-500">发薪日: 每月</span>
+                            <input type="number" v-model="game.payDay" min="1" max="31" class="w-12 text-center bg-white border border-slate-200 rounded font-bold text-forest-700 focus:outline-none focus:border-forest-500" @change="saveGame">
+                            <span class="text-slate-500">号</span>
+                        </div>
+                    </div>
+
+                    <!-- 资产概览 -->
+                    <div>
+                        <h5 class="text-sm font-bold text-slate-400 mb-3 uppercase tracking-wider">资产概览</h5>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div class="bg-gradient-to-br from-emerald-50 to-white p-4 rounded-2xl border border-emerald-100">
+                                <p class="text-xs text-emerald-600 mb-1">现实财富 (累计实发)</p>
+                                <div class="text-lg font-bold text-emerald-800">{{ formatMoney(salaryStats.yearTotal) }}</div>
+                            </div>
+                            <div class="bg-gradient-to-br from-amber-50 to-white p-4 rounded-2xl border border-amber-100">
+                                <p class="text-xs text-amber-600 mb-1">森林财富 (总能量)</p>
+                                <div class="text-lg font-bold text-amber-800">{{ formatNumber(game.lifetimeStats.coins) }}</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 生涯统计 -->
+                    <div>
+                        <h5 class="text-sm font-bold text-slate-400 mb-3 uppercase tracking-wider">生涯统计</h5>
+                        <div class="grid grid-cols-3 gap-3">
+                            <div class="bg-white p-3 rounded-xl border border-slate-100 text-center">
+                                <div class="text-2xl mb-1">🌾</div>
+                                <div class="text-sm font-bold text-slate-700">{{ formatNumber(game.lifetimeStats.harvest) }}</div>
+                                <div class="text-[10px] text-slate-400">总收获</div>
+                            </div>
+                            <div class="bg-white p-3 rounded-xl border border-slate-100 text-center">
+                                <div class="text-2xl mb-1">🧘</div>
+                                <div class="text-sm font-bold text-slate-700">{{ Math.floor(game.lifetimeStats.focus / 60) }}h</div>
+                                <div class="text-[10px] text-slate-400">专注时长</div>
+                            </div>
+                            <div class="bg-white p-3 rounded-xl border border-slate-100 text-center">
+                                <div class="text-2xl mb-1">🥀</div>
+                                <div class="text-sm font-bold text-slate-700">{{ formatNumber(game.lifetimeStats.withered) }}</div>
+                                <div class="text-[10px] text-slate-400">枯萎次数</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 种植记录 -->
+                    <div>
+                        <h5 class="text-sm font-bold text-slate-400 mb-3 uppercase tracking-wider">种植图谱</h5>
+                        <div class="grid grid-cols-4 gap-2">
+                            <div v-for="(count, id) in game.cropStats" :key="id" class="bg-white p-2 rounded-xl border border-slate-50 flex flex-col items-center">
+                                <div class="text-xl mb-1">{{ PLANTS[id]?.icon }}</div>
+                                <div class="text-[10px] font-bold text-slate-600 text-center truncate w-full">{{ PLANTS[id]?.name }}</div>
+                                <div class="text-[10px] text-slate-400">x{{ count }}</div>
+                            </div>
+                            <div v-if="Object.keys(game.cropStats || {}).length === 0" class="col-span-4 text-center text-xs text-slate-400 py-4 bg-slate-50 rounded-xl">
+                                暂无种植记录
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 任务 -->
+            <div v-if="activeModal === 'tasks'" class="flex flex-col h-full min-h-0">
+                <h3 class="text-xl font-bold mb-4 flex items-center gap-2 text-forest-800 flex-shrink-0"><i data-lucide="clipboard-list" class="w-6 h-6 text-forest-500"></i> 每日委托</h3>
+                <div class="space-y-3 overflow-y-auto flex-1 pr-2 custom-scroll">
+                    <div v-for="task in game.tasks" :key="task.id" class="bg-white rounded-2xl p-4 flex justify-between items-center border border-forest-50 shadow-sm">
+                        <div>
+                            <p class="font-bold text-sm text-slate-700">{{ task.desc }}</p>
+                            <span class="text-xs text-slate-400 font-mono">{{ task.current }}/{{ task.target }}</span>
+                        </div>
+                        <button @click="claimTask(task)" :disabled="task.claimed || task.current < task.target" class="px-4 py-2 rounded-xl text-xs font-bold transition-all border" :class="task.claimed ? 'bg-slate-100 text-slate-400 border-transparent' : (task.current >= task.target ? 'bg-forest-500 text-white shadow-lg animate-pulse border-forest-500' : 'bg-white border-slate-200 text-slate-400')">
+                            {{ task.claimed ? '已完成' : (task.current >= task.target ? '领取奖励' : `+${task.reward} 能量`) }}
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 成就 -->
+            <div v-if="activeModal === 'achievements'" class="flex flex-col h-full min-h-0">
+                <h3 class="text-xl font-bold mb-4 flex items-center gap-2 text-amber-700 flex-shrink-0">
+                    <i data-lucide="trophy" class="w-6 h-6 text-amber-500"></i> 里程碑 
+                    <span class="text-xs bg-amber-100 px-2 py-0.5 rounded-full text-amber-600">{{ game.unlockedAchievements.length }}/{{ achievementsList.length }}</span>
+                </h3>
+                <div class="space-y-3 overflow-y-auto flex-1 pr-2 custom-scroll">
+                    <div v-for="ach in achievementsList" :key="ach.id" class="bg-white rounded-2xl p-4 flex gap-4 border transition-all" :class="isAchievementUnlocked(ach) ? 'border-amber-200 bg-amber-50/50' : 'border-slate-100 opacity-60 grayscale'">
+                        <div class="p-3 rounded-2xl h-fit bg-amber-100 text-amber-500"><i :data-lucide="ach.icon" class="w-6 h-6"></i></div>
+                        <div class="flex-1">
+                            <h4 class="font-bold text-sm text-slate-800">{{ ach.title }}</h4>
+                            <p class="text-xs text-slate-500 mt-1">{{ ach.desc }}</p>
+                            <div v-if="!isAchievementUnlocked(ach)" class="mt-2 text-xs text-amber-600 font-bold bg-amber-100/50 px-2 py-1 rounded w-fit">进度: {{ formatNumber(getAchievementProgress(ach)) }} / {{ formatNumber(ach.target) }}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 图鉴 -->
+            <div v-if="activeModal === 'encyclopedia'" class="flex flex-col h-full min-h-0">
+                <h3 class="text-xl font-bold mb-4 flex items-center gap-2 text-sky-700 flex-shrink-0"><i data-lucide="book-open" class="w-6 h-6 text-sky-500"></i> 博物志</h3>
+                <div class="flex gap-2 mb-4 overflow-x-auto pb-2 shrink-0">
+                    <button v-for="cat in ['全部', '蔬菜', '水果', '花卉', '稀有']" @click="encyclopediaFilter = cat" class="px-4 py-1.5 rounded-full text-xs font-bold transition-all whitespace-nowrap" :class="encyclopediaFilter === cat ? 'bg-sky-500 text-white shadow-md' : 'bg-white border border-slate-200 text-slate-500'">{{ cat }}</button>
+                </div>
+                <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 overflow-y-auto flex-1 pr-2 custom-scroll p-1 content-start">
+                    <div v-for="plant in filteredEncyclopedia" :key="plant.id" class="aspect-[3/4] rounded-2xl flex flex-col items-center justify-center p-2 text-center transition-all relative group border bg-white border-slate-200 hover:shadow-lg">
+                        <div class="text-4xl mb-2 filter transition-transform group-hover:scale-110" :class="isUnlocked(plant.id) ? '' : 'brightness-0 opacity-20 grayscale'">{{ plant.icon }}</div>
+                        <div class="text-xs font-bold w-full truncate" :class="isUnlocked(plant.id) ? 'text-slate-700' : 'text-slate-400'">{{ isUnlocked(plant.id) ? plant.name : '???' }}</div>
+                        <div v-if="isUnlocked(plant.id)" class="mt-1 text-[10px] text-slate-400 line-clamp-2 leading-tight">{{ plant.desc }}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 工资表单 -->
+    <div v-if="showSalaryForm" class="fixed inset-0 z-[60] bg-black/40 backdrop-blur-sm flex items-end sm:items-center justify-center sm:p-4">
+        <div class="bg-white w-full sm:max-w-lg rounded-t-[32px] sm:rounded-[32px] max-h-[90vh] flex flex-col shadow-2xl animate-pop">
+            <div class="p-6 border-b border-slate-100 flex justify-between items-center">
+                <h3 class="text-xl font-bold text-forest-800">{{ form.id ? '编辑记录' : '录入工资' }}</h3>
+                <button @click="showSalaryForm = false" class="p-2 bg-slate-100 hover:bg-slate-200 rounded-full"><i data-lucide="x" class="w-5 h-5 text-slate-500"></i></button>
+            </div>
+            <div class="flex-1 overflow-y-auto p-6 space-y-6 custom-scroll">
+                <div class="space-y-4">
+                    <div><label class="block text-xs font-bold text-slate-500 mb-1">日期</label><input type="date" v-model="form.date" class="w-full p-3 rounded-xl bg-slate-50 border-transparent focus:bg-white focus:border-forest-500 transition-all outline-none font-mono text-slate-700"></div>
+                    <div><label class="block text-xs font-bold text-slate-500 mb-1">基本工资</label><div class="relative"><span class="absolute left-4 top-3.5 text-slate-400 font-bold">¥</span><input type="number" v-model.number="form.baseSalary" placeholder="0.00" class="w-full p-3 pl-8 rounded-xl bg-slate-50 border-transparent focus:bg-white focus:border-forest-500 transition-all outline-none font-mono text-lg font-bold text-forest-800"></div></div>
+                </div>
+                <div class="bg-slate-50 rounded-2xl p-4">
+                    <div class="flex justify-between items-center mb-3"><label class="text-xs font-bold text-slate-500">奖金补贴</label><button @click="addDynamicField('bonuses')" class="text-xs text-forest-600 font-bold flex items-center gap-1 hover:bg-white px-2 py-1 rounded-lg transition-colors"><i data-lucide="plus" class="w-3 h-3"></i> 添加</button></div>
+                    <div class="space-y-2"><div v-for="(item, idx) in form.bonuses" :key="'b'+idx" class="flex gap-2"><input type="text" v-model="item.name" placeholder="名称" class="flex-1 p-2 rounded-lg bg-white border border-slate-200 text-sm outline-none"><input type="number" v-model.number="item.amount" placeholder="0" class="w-24 p-2 rounded-lg bg-white border border-slate-200 text-sm outline-none"><button @click="form.bonuses.splice(idx, 1)" class="text-rose-400 p-2"><i data-lucide="trash-2" class="w-4 h-4"></i></button></div></div>
+                </div>
+                <div class="bg-forest-50 rounded-2xl p-5 border border-forest-100 flex justify-between items-center">
+                    <div><div class="text-xs text-forest-600 font-bold">预计实发</div><div class="text-2xl font-black text-forest-800 font-mono">{{ formatMoney(computedForm.net) }}</div></div>
+                    <div class="text-right"><div class="text-xs text-amber-600 font-bold">可获能量</div><div class="text-sm font-black text-amber-500 flex items-center justify-end gap-1">+{{ Math.floor(computedForm.net * 0.01) }} <i data-lucide="coins" class="w-4 h-4 fill-current"></i></div></div>
+                </div>
+            </div>
+            <div class="p-6 border-t border-slate-100 flex gap-3">
+                <button v-if="form.id" @click="deleteRecord" class="p-3.5 rounded-xl border-2 border-rose-100 text-rose-500 font-bold"><i data-lucide="trash" class="w-5 h-5"></i></button>
+                <button @click="submitSalary" class="flex-1 bg-forest-500 hover:bg-forest-600 text-white py-3.5 rounded-xl font-bold shadow-lg shadow-forest-200 active:scale-95 transition-all text-lg">确认归档</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div class="fixed top-24 left-1/2 -translate-x-1/2 z-[100] flex flex-col gap-2 pointer-events-none w-full max-w-sm px-4">
+        <transition-group name="list">
+            <div v-for="t in toasts" :key="t.id" class="bg-white/90 backdrop-blur-md border border-forest-100 px-4 py-3 rounded-2xl shadow-xl flex items-center gap-3 pointer-events-auto transform transition-all duration-300">
+                <div class="p-2 rounded-full" :class="t.type === 'error' ? 'bg-rose-100 text-rose-500' : 'bg-forest-100 text-forest-600'"><i :data-lucide="t.icon" class="w-5 h-5"></i></div>
+                <div><div class="font-bold text-sm text-slate-800">{{ t.title }}</div><div class="text-xs text-slate-500">{{ t.msg }}</div></div>
+            </div>
+        </transition-group>
+    </div>
+
+</div>
+
+<script>
+const { createApp, ref, reactive, computed, watch, onMounted, nextTick } = Vue;
+
+const TIME_SCALE = 1;
+
+// 50+ 植物数据库 (命名优化)
+const PLANTS_DB = [
+    { id: 'p1', name: '速生萝卜', icon: '🥕', type: '蔬菜', rarity: 'common', level: 1, time: 5, price: 10, sell: 20, desc: '生长迅速，适合新手练手。' },
+    { id: 'p2', name: '翡翠白菜', icon: '🥬', type: '蔬菜', rarity: 'common', level: 1, time: 10, price: 15, sell: 28, desc: '清脆爽口，火锅必备。' },
+    { id: 'p3', name: '黄金土豆', icon: '🥔', type: '蔬菜', rarity: 'common', level: 2, time: 15, price: 20, sell: 35, desc: '埋在土里的黄金。' },
+    { id: 'p4', name: '红灯笼番茄', icon: '🍅', type: '蔬菜', rarity: 'common', level: 2, time: 20, price: 25, sell: 45, desc: '红彤彤的，像小灯笼。' },
+    { id: 'p5', name: '紫水晶茄子', icon: '🍆', type: '蔬菜', rarity: 'common', level: 3, time: 30, price: 30, sell: 55, desc: '紫色的外衣下是柔软的心。' },
+    { id: 'p11', name: '初恋草莓', icon: '🍓', type: '水果', rarity: 'uncommon', level: 5, time: 60, price: 50, sell: 120, desc: '甜美的初恋味道。' },
+    { id: 'p12', name: '紫霞葡萄', icon: '🍇', type: '水果', rarity: 'uncommon', level: 6, time: 90, price: 60, sell: 150, desc: '一串串紫色的宝石。' },
+    { id: 'p21', name: '希望向日葵', icon: '🌻', type: '花卉', rarity: 'common', level: 4, time: 45, price: 40, sell: 80, desc: '永远追随太阳的脚步。' },
+    { id: 'p22', name: '真爱玫瑰', icon: '🌹', type: '花卉', rarity: 'rare', level: 10, time: 240, price: 150, sell: 400, desc: '爱情的象征，带刺的美丽。' },
+    { id: 'p41', name: '幸运四叶草', icon: '🍀', type: '稀有', rarity: 'epic', level: 20, time: 600, price: 500, sell: 1500, desc: '传说中能带来好运。' },
+    { id: 'p42', name: '摇钱树', icon: '🌲', type: '稀有', rarity: 'legendary', level: 30, time: 1440, price: 2000, sell: 8000, desc: '摇一摇，金币掉下来。' },
+];
+
+const generateMorePlants = () => {
+    const emojis = ['🥦','🌽','🧅','🧄','🥜','🍄','🥑','🥝','🍉','🍋','🍑','🍒','🌷','🌺','🌸','🌵','🌴','🍁','🍂','🌾','🪷','💐','🪴','🍃','🌿','☘️','🎍','🎋','🪵','🪨','🍄','🌰','🥜','🍞','🥐','🥖','🧀','🥚','🍳','🧈'];
+    const names = ['西兰花卫士', '阳光玉米', '洋葱骑士', '大蒜守卫', '花生宝宝', '魔力红菇', '森林鳄梨', '奇异果子', '夏日瓜王', '酸甜柠檬', '蜜桃公主', '红樱桃', '郁金香', '扶桑花', '樱花雨', '沙漠仙人掌', '椰子树', '红枫叶', '落叶归根', '丰收麦穗', '睡莲', '百花束', '盆栽精灵', '风之叶', '草药', '三叶草', '竹子', '许愿树', '原木', '灵石', '毒蘑菇', '板栗', '开心果', '全麦面包', '牛角包', '法棍', '奶酪块', '金鸡蛋', '煎蛋', '黄油'];
+    return emojis.map((e, i) => ({
+        id: `gen_${i}`,
+        name: names[i] || `神秘植物 ${i+1}`,
+        icon: e,
+        type: i % 3 === 0 ? '蔬菜' : (i % 3 === 1 ? '水果' : '花卉'),
+        rarity: i % 5 === 0 ? 'rare' : 'common',
+        level: Math.floor(i/3) + 1,
+        time: (i+1) * 15,
+        price: (i+1) * 20,
+        sell: (i+1) * 45,
+        desc: '森林深处未被记录的神秘物种。'
+    }));
+};
+
+const FULL_PLANTS = [...PLANTS_DB, ...generateMorePlants()];
+
+const generateAchievements = () => {
+    const list = [];
+    [10, 50, 100, 500, 1000].forEach((t, i) => list.push({ id: `harvest_${t}`, title: `丰收之神 ${['I','II','III','IV','V'][i]}`, desc: `累计收获 ${t} 次作物`, target: t, type: 'lifetime_harvest', icon: 'sprout' }));
+    [1000, 5000, 10000, 50000, 100000].forEach((t, i) => list.push({ id: `wealth_${t}`, title: `财富密码 ${['I','II','III','IV','V'][i]}`, desc: `持有能量达到 ${t}`, target: t, type: 'current_coins', icon: 'gem' }));
+    [5, 10, 20, 30, 40, 50].forEach((t, i) => list.push({ id: `col_${t}`, title: `博物学家 ${['I','II','III','IV','V','VI'][i]}`, desc: `解锁 ${t} 个图鉴`, target: t, type: 'encyclopedia_count', icon: 'book' }));
+    [5, 10, 20, 30, 50].forEach((t, i) => list.push({ id: `lvl_${t}`, title: `森林领主 ${['I','II','III','IV','V'][i]}`, desc: `森林等级 Lv.${t}`, target: t, type: 'level', icon: 'crown' }));
+    [30, 60, 120, 300, 600].forEach((t, i) => list.push({ id: `focus_${t}`, title: `心流大师 ${['I','II','III','IV','V'][i]}`, desc: `累计专注 ${t} 分钟`, target: t, type: 'lifetime_focus', icon: 'brain-circuit' }));
+    list.push({ id: 'wither_1', title: '覆水难收', desc: '第一次枯萎', target: 1, type: 'lifetime_withered', icon: 'alert-triangle' });
+    list.push({ id: 'wither_10', title: '破窗效应', desc: '累计枯萎 10 次', target: 10, type: 'lifetime_withered', icon: 'alert-triangle' });
+    return list;
+};
+const ACHIEVEMENTS_DEF = generateAchievements();
+
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+const playTone = (freq, type = 'sine', duration = 0.1) => {
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+    gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.start();
+    osc.stop(audioCtx.currentTime + duration);
+};
+
+createApp({
+    setup() {
+        const now = ref(Date.now());
+        const viewMode = ref('salary');
+        const game = reactive({
+            coins: 500, level: 1, xp: 0,
+            plots: Array(16).fill(null).map((_, i) => ({ id: i, locked: i > 3, unlockPrice: (i-2)*500, cropId: null, plantedAt: 0, withered: false })),
+            inventory: {}, unlockedEncyclopedia: ['p1'], marketRate: 1.0, lastSaveTime: Date.now(),
+            lifetimeStats: { coins: 0, harvest: 0, focus: 0, withered: 0 },
+            cropStats: {}, 
+            tasks: [], lastTaskDate: '', unlockedAchievements: [],
+            payDay: 15, weather: 'sunny', weatherCode: 0
+        });
+        
+        const salaryRecords = ref([]);
+        const form = reactive({ id: null, date: new Date().toISOString().split('T')[0], baseSalary: null, bonuses: [], deductions: [] });
+        const showSalaryForm = ref(false);
+        const activeModal = ref(null);
+        const storeFilter = ref('全部');
+        const encyclopediaFilter = ref('全部');
+        const selectedSeed = ref(null);
+        const toasts = ref([]);
+        const offlineReport = ref(null);
+        const isFocusing = ref(false);
+        const focusTime = ref(25);
+        const focusEndTime = ref(0);
+        const soundEnabled = ref(true);
+        const isDockExpanded = ref(false);
+        const activePlotId = ref(null);
+        const weatherInfo = ref({ desc: '晴朗', icon: 'sun' });
+
+        // Computed
+        const realDate = computed(() => new Date(now.value));
+        const formattedRealTime = computed(() => realDate.value.toLocaleTimeString('zh-CN', {hour: '2-digit', minute: '2-digit'}));
+        const hour = computed(() => realDate.value.getHours());
+        const month = computed(() => realDate.value.getMonth());
+        
+        const skyStyle = computed(() => {
+            const h = hour.value + realDate.value.getMinutes()/60;
+            // 天气影响天空颜色
+            if (game.weather === 'rain') return { '--sky-top': '#607d8b', '--sky-bottom': '#cfd8dc' };
+            if (h >= 6 && h < 18) return { '--sky-top': '#e0f7fa', '--sky-bottom': '#ffffff' }; 
+            return { '--sky-top': '#263238', '--sky-bottom': '#37474f' };
+        });
+        const brightness = computed(() => {
+            if (game.weather === 'rain' || game.weather === 'snow') return 0.8;
+            return (hour.value >= 6 && hour.value < 18) ? 1 : 0.7;
+        });
+        const celestialRotation = computed(() => ((hour.value + realDate.value.getMinutes()/60) / 24) * 360 - 180);
+        const seasonName = computed(() => [2,3,4].includes(month.value) ? '春' : [5,6,7].includes(month.value) ? '夏' : [8,9,10].includes(month.value) ? '秋' : '冬');
+        
+        const currentBuff = computed(() => {
+            if (game.weather === 'rain') return { active: true, text: '雨水滋润: 生长+30%', color: 'bg-blue-400' };
+            if (game.weather === 'snow') return { active: true, text: '瑞雪兆丰年: 产量UP', color: 'bg-white' };
+            if (realDate.value.getDate() === game.payDay) return { active: true, text: '发薪日: 转化+20%', color: 'bg-rose-400' };
+            if (hour.value >= 6 && hour.value < 9) return { active: true, text: '晨耕: 经验UP', color: 'bg-emerald-400' };
+            if (hour.value >= 18 && hour.value < 21) return { active: true, text: '晚市: 售价UP', color: 'bg-amber-400' };
+            return { active: false };
+        });
+
+        const isPayDay = computed(() => realDate.value.getDate() === game.payDay);
+        const PLANTS = computed(() => FULL_PLANTS.reduce((acc, p) => { acc[p.id] = p; return acc; }, {}));
+        const sortedRecords = computed(() => [...salaryRecords.value].sort((a,b) => new Date(b.date) - new Date(a.date)));
+        
+        const filteredPlants = computed(() => {
+            let list = FULL_PLANTS;
+            if (storeFilter.value === '速生') list = list.filter(p => p.time <= 30);
+            if (storeFilter.value === '稀有') list = list.filter(p => ['rare','epic','legendary'].includes(p.rarity));
+            return list.sort((a,b) => a.level - b.level);
+        });
+
+        const filteredEncyclopedia = computed(() => {
+            if (encyclopediaFilter.value === '全部') return FULL_PLANTS;
+            return FULL_PLANTS.filter(p => p.type === encyclopediaFilter.value || (encyclopediaFilter.value === '稀有' && p.rarity !== 'common'));
+        });
+
+        const unlockedCount = computed(() => game.unlockedEncyclopedia.length);
+        const pendingTasks = computed(() => game.tasks.filter(t => !t.claimed && t.current >= t.target).length);
+        const computedForm = computed(() => {
+            const bonusTotal = form.bonuses.reduce((s, i) => s + (i.amount || 0), 0);
+            const deductTotal = form.deductions.reduce((s, i) => s + (i.amount || 0), 0);
+            const gross = (form.baseSalary || 0) + bonusTotal;
+            return { gross, net: gross - deductTotal };
+        });
+        const salaryStats = computed(() => {
+            const yearTotal = salaryRecords.value.reduce((s, r) => s + r.net, 0);
+            const insuranceTotal = salaryRecords.value.reduce((s, r) => s + (r.insurance || 0), 0);
+            return { yearTotal, insuranceTotal };
+        });
+        const particles = computed(() => {
+            const chars = ['🍃','✨','🌼'];
+            return Array.from({length: 12}).map((_,i) => ({ id: i, char: chars[i%chars.length], style: { left: (i*8)+'%', animationDuration: (8+i%5)+'s', animationDelay: (i%3)+'s' } }));
+        });
+        const achievementsList = computed(() => ACHIEVEMENTS_DEF);
+        const nextLevelXp = computed(() => game.level * 500);
+
+        const initAudioContext = () => { if (audioCtx.state === 'suspended') audioCtx.resume(); };
+        const playSound = (type) => {
+            if(!soundEnabled.value) return;
+            initAudioContext();
+            if(type === 'click') playTone(400, 'sine', 0.05);
+            if(type === 'success') { playTone(600, 'sine', 0.1); setTimeout(()=>playTone(800, 'sine', 0.2), 100); }
+            if(type === 'harvest') { playTone(800, 'triangle', 0.1); }
+            if(type === 'error') playTone(200, 'sawtooth', 0.2);
+            if(type === 'wither') { playTone(150, 'sawtooth', 0.4); }
+        };
+        const toggleSound = () => { soundEnabled.value = !soundEnabled.value; };
+
+        // 天气系统
+        const fetchRealWeather = async () => {
+            if (!navigator.geolocation) return showToast('无法定位', '浏览器不支持定位', 'map-pin', 'error');
+            
+            showToast('正在获取天气...', '请稍候', 'cloud');
+            
+            navigator.geolocation.getCurrentPosition(async (pos) => {
+                try {
+                    const { latitude, longitude } = pos.coords;
+                    const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current_weather=true`);
+                    const data = await res.json();
+                    
+                    const code = data.current_weather.weathercode;
+                    game.weatherCode = code;
+                    
+                    // WMO code mapping
+                    if (code <= 3) { game.weather = 'sunny'; weatherInfo.value = { desc: '晴朗', icon: 'sun' }; }
+                    else if (code <= 48) { game.weather = 'cloudy'; weatherInfo.value = { desc: '多云', icon: 'cloud' }; }
+                    else if (code <= 67 || (code >= 80 && code <= 82)) { game.weather = 'rain'; weatherInfo.value = { desc: '雨天', icon: 'cloud-rain' }; }
+                    else if (code >= 71) { game.weather = 'snow'; weatherInfo.value = { desc: '雪天', icon: 'snowflake' }; }
+                    
+                    showToast('天气已更新', `当前：${weatherInfo.value.desc}`, weatherInfo.value.icon);
+                    saveGame();
+                } catch (e) {
+                    showToast('获取失败', '网络错误，使用默认天气', 'wifi-off', 'error');
+                }
+            }, () => {
+                showToast('定位失败', '请允许定位权限以获取天气', 'map-pin-off', 'error');
+            });
+        };
+
+        const openSalaryForm = (record = null) => {
+            playSound('click');
+            if (record) { Object.assign(form, JSON.parse(JSON.stringify(record))); form.bonuses = record.bonuses || []; form.deductions = record.deductions || []; }
+            else { Object.assign(form, { id: null, date: new Date().toISOString().split('T')[0], baseSalary: null, bonuses: [{name:'绩效',amount:null}], deductions: [{name:'社保',ratio:0.08,amount:null}] }); }
+            showSalaryForm.value = true;
+        };
+
+        const addDynamicField = () => form.bonuses.push({ name: '', amount: null });
+        const removeDynamicField = (t, i) => form.bonuses.splice(i, 1);
+        const autoCalcDeductions = () => { form.deductions.forEach(d => { if(d.ratio) d.amount = parseFloat(((form.baseSalary||0)*d.ratio).toFixed(2)); }); };
+        
+        const submitSalary = () => {
+            if (!form.baseSalary) { playSound('error'); return showToast('错误', '请输入基本工资', 'alert-circle', 'error'); }
+            const record = { id: form.id || Date.now(), date: form.date, baseSalary: form.baseSalary, bonuses: form.bonuses, deductions: form.deductions, net: computedForm.value.net, gross: computedForm.value.gross, insurance: form.deductions.reduce((s,i)=>s+(i.amount||0),0) };
+            if(form.id) { const idx = salaryRecords.value.findIndex(r => r.id === form.id); if(idx!==-1) salaryRecords.value[idx] = record; }
+            else { salaryRecords.value.unshift(record); const reward = Math.floor(record.net * 0.01); game.coins += reward; game.lifetimeStats.coins += reward; playSound('success'); showToast('归档成功', `获得 ${reward} 能量`, 'banknote'); }
+            showSalaryForm.value = false; saveGame();
+        };
+
+        const deleteRecord = (id) => { if(confirm('删除此记录？')) { salaryRecords.value = salaryRecords.value.filter(r => r.id !== id); showSalaryForm.value = false; saveGame(); } };
+
+        const selectSeed = (id) => {
+            playSound('click');
+            const p = PLANTS.value[id];
+            if(game.level < p.level) return showToast('等级不足', `需Lv.${p.level}`, 'lock', 'error');
+            if(game.coins < p.price) return showToast('能量不足', '去记账吧', 'coins', 'error');
+            selectedSeed.value = selectedSeed.value === id ? null : id;
+        };
+
+        const checkLevelUp = () => {
+            while (game.xp >= nextLevelXp.value) {
+                game.xp -= nextLevelXp.value;
+                game.level++;
+                playSound('success');
+                showToast('升级啦！', `当前等级 Lv.${game.level}`, 'crown');
+            }
+        };
+
+        const handlePlotClick = (plot) => {
+             if (plot.cropId && !isMature(plot) && !plot.withered) {
+                if (activePlotId.value === plot.id) activePlotId.value = null; else activePlotId.value = plot.id;
+                return; 
+            }
+            if(plot.locked) {
+                if(game.coins >= plot.unlockPrice) { game.coins -= plot.unlockPrice; plot.locked = false; playSound('success'); showToast('扩建成功', '森林变大了', 'sprout'); saveGame(); }
+                else { playSound('error'); showToast('能量不足', `需 ${plot.unlockPrice}`, 'lock', 'error'); }
+                return;
+            }
+            if(plot.withered) {
+                 plot.cropId = null; plot.withered = false; playSound('click'); showToast('清理完成', '枯萎作物已移除', 'trash'); saveGame(); return;
+            }
+            if(plot.cropId && isMature(plot)) {
+                const p = PLANTS.value[plot.cropId];
+                const profit = Math.round(p.sell * game.marketRate);
+                game.coins += profit; 
+                game.xp += Math.round(p.price / 2); 
+                
+                game.lifetimeStats.harvest++; game.lifetimeStats.coins += profit;
+                if(!game.cropStats) game.cropStats = {};
+                game.cropStats[p.id] = (game.cropStats[p.id] || 0) + 1;
+
+                updateTask('harvest'); updateTask('earn', profit);
+                if(!game.unlockedEncyclopedia.includes(p.id)) { game.unlockedEncyclopedia.push(p.id); showToast('图鉴解锁', p.name, 'book-open'); }
+                
+                checkLevelUp(); 
+                
+                plot.cropId = null; playSound('harvest'); showToast('收获', `+${profit}`, 'coins'); checkAchievements(); saveGame(); return;
+            }
+            if(!plot.cropId && selectedSeed.value) {
+                const p = PLANTS.value[selectedSeed.value];
+                if(game.coins >= p.price) { game.coins -= p.price; plot.cropId = p.id; plot.plantedAt = Date.now(); playSound('click'); saveGame(); }
+                else { playSound('error'); showToast('能量不足', '无法种植', 'coins', 'error'); }
+            }
+        };
+
+        const startFocus = () => { isFocusing.value = true; focusEndTime.value = Date.now() + focusTime.value * 60 * 1000; playSound('success'); };
+        const giveUpFocus = () => {
+            isFocusing.value = false;
+            if (Math.random() < 0.5) {
+                 const growingPlots = game.plots.filter(p => p.cropId && !isMature(p) && !p.withered);
+                 if (growingPlots.length > 0) {
+                     const victim = growingPlots[Math.floor(Math.random() * growingPlots.length)];
+                     victim.withered = true;
+                     game.lifetimeStats.withered++;
+                     playSound('wither');
+                     showToast('专注失败', '一个作物枯萎了...', 'alert-triangle', 'error');
+                     checkAchievements();
+                 }
+            } else {
+                showToast('专注中断', '幸好没有作物受到影响', 'info');
+            }
+            saveGame();
+        };
+        const getFocusDisplayTime = () => {
+            if(!isFocusing.value) return '00:00';
+            const left = Math.max(0, Math.floor((focusEndTime.value - now.value) / 1000));
+            if(left === 0 && isFocusing.value) { 
+                isFocusing.value = false; 
+                const reward = focusTime.value * 5; 
+                game.coins += reward; 
+                game.lifetimeStats.focus += focusTime.value; 
+                
+                // 生长加速奖励
+                const bonusTime = focusTime.value * 60 * 1000 * 0.5; 
+                game.plots.forEach(p => {
+                    if (p.cropId && !p.withered && !isMature(p)) {
+                        p.plantedAt -= bonusTime;
+                    }
+                });
+
+                updateTask('focus', focusTime.value); updateTask('earn', reward); 
+                checkAchievements(); playSound('success'); 
+                showToast('专注完成！', `生长加速 & +${reward} 能量`, 'trophy'); 
+                saveGame();
+            }
+            const m = Math.floor(left / 60).toString().padStart(2,'0'); const s = (left % 60).toString().padStart(2,'0'); return `${m}:${s}`;
+        };
+
+        const handleDockAction = (action) => { if (action === 'focus') startFocus(); else activeModal.value = action; isDockExpanded.value = false; };
+        const generateDailyTasks = () => { if (game.lastTaskDate !== new Date().toDateString()) { game.tasks = [{ id: 1, desc: '收获 3 次', target: 3, current: 0, reward: 50, type: 'harvest', claimed: false }, { id: 2, desc: '赚取 100 能量', target: 100, current: 0, reward: 30, type: 'earn', claimed: false }]; game.lastTaskDate = new Date().toDateString(); } };
+        const updateTask = (type, amt=1) => { game.tasks.forEach(t => { if(t.type===type && !t.claimed) t.current += amt; }); };
+        const claimTask = (t) => { if(!t.claimed && t.current >= t.target) { game.coins += t.reward; t.claimed = true; playSound('success'); showToast('任务完成', `+${t.reward}`, 'check'); saveGame(); } };
+        
+        const isAchievementUnlocked = (ach) => game.unlockedAchievements.includes(ach.id);
+        const getAchievementProgress = (ach) => {
+            if(ach.type === 'lifetime_coins') return game.lifetimeStats.coins;
+            if(ach.type === 'lifetime_harvest') return game.lifetimeStats.harvest;
+            if(ach.type === 'encyclopedia_count') return game.unlockedEncyclopedia.length;
+            if(ach.type === 'level') return game.level;
+            if(ach.type === 'lifetime_focus') return game.lifetimeStats.focus;
+            if(ach.type === 'lifetime_withered') return game.lifetimeStats.withered || 0;
+            return 0;
+        };
+        const checkAchievements = () => { ACHIEVEMENTS_DEF.forEach(ach => { if(!isAchievementUnlocked(ach) && getAchievementProgress(ach) >= ach.target) { game.unlockedAchievements.push(ach.id); playSound('success'); showToast('成就达成', ach.title, 'trophy'); } }); };
+
+        // 辅助 - 天气影响生长
+        const getGrowthRate = () => {
+            if (game.weather === 'rain') return 1.3; // 雨天加速30%
+            return 1.0;
+        };
+
+        const isMature = (p) => { if (!p.cropId) return false; return (now.value - p.plantedAt) * getGrowthRate() >= PLANTS.value[p.cropId].time * 60 * 1000; };
+        const getGrowthPercent = (p) => { 
+            if (!p.cropId) return 0; 
+            const total = PLANTS.value[p.cropId].time * 60 * 1000;
+            const elapsed = (now.value - p.plantedAt) * getGrowthRate();
+            return Math.min(100, (elapsed / total) * 100); 
+        };
+        const getGrowthScale = (p) => 0.3 + (getGrowthPercent(p)/100)*0.7;
+        const getPlantIcon = (id) => PLANTS.value[id]?.icon || '🌱';
+        const getTimeLeft = (p) => {
+            if(!p.cropId) return '';
+            const total = PLANTS.value[p.cropId].time * 60 * 1000; 
+            const elapsed = (now.value - p.plantedAt) * getGrowthRate();
+            const leftMs = (total - elapsed) / getGrowthRate();
+            const left = Math.ceil(leftMs/60000);
+            return left > 0 ? `${left}分` : '成熟';
+        };
+        const getTimeLeftSimple = (p) => { 
+            if(!p.cropId) return ''; 
+            const total = PLANTS.value[p.cropId].time * 60 * 1000;
+            const elapsed = (now.value - p.plantedAt) * getGrowthRate();
+            const diff = (total - elapsed) / getGrowthRate();
+            if(diff<=0) return ''; 
+            const m=Math.floor(diff/60000); const s=Math.floor((diff%60000)/1000); 
+            return `${m}:${s.toString().padStart(2,'0')}`; 
+        };
+        const getEstimatedProfit = (p) => { if(!p.cropId) return 0; return Math.round(PLANTS.value[p.cropId].sell * game.marketRate); };
+        const isUnlocked = (id) => game.unlockedEncyclopedia.includes(id);
+        const formatMoney = (n) => '¥' + (n||0).toLocaleString('en-US', {minimumFractionDigits: 2});
+        const formatNumber = (n) => (n||0).toLocaleString();
+        const formatDate = (d) => new Date(d).toLocaleDateString();
+        const formatDuration = (ms) => Math.ceil(ms/60000) + '分钟';
+        const showToast = (title, msg, icon, type='info') => { const id = Date.now(); toasts.value.push({id, title, msg, icon, type}); setTimeout(() => toasts.value = toasts.value.filter(t => t.id !== id), 3000); };
+
+        let saveTimeout;
+        const saveGame = () => { clearTimeout(saveTimeout); saveTimeout = setTimeout(() => { game.lastSaveTime = Date.now(); localStorage.setItem('salary_forest_final', JSON.stringify({ game, records: salaryRecords.value })); }, 1000); };
+        const loadGame = () => {
+            const d = localStorage.getItem('salary_forest_final');
+            if(d) {
+                const p = JSON.parse(d);
+                Object.assign(game, p.game);
+                salaryRecords.value = p.records || [];
+                const offlineMin = (Date.now() - game.lastSaveTime) / 60000;
+                if(offlineMin > 10) {
+                    let count = 0;
+                    game.plots.forEach(p => { if(p.cropId && !isMature(p) && !p.withered && (p.plantedAt + PLANTS.value[p.cropId].time*60000 <= Date.now())) count++; });
+                    if(count > 0 || offlineMin > 60) offlineReport.value = { duration: Math.floor(offlineMin/60)+'小时', growth: count > 0 ? `${count}作物成熟` : '森林生长中' };
+                }
+            }
+            generateDailyTasks();
+        };
+
+        onMounted(() => { 
+            loadGame(); 
+            setInterval(() => {
+                now.value = Date.now();
+                // 市场波动逻辑
+                if (Math.random() < 0.005) { // 低概率变动
+                     game.marketRate = 0.8 + Math.random() * 0.5;
+                }
+            }, 1000); 
+            watch(game, saveGame, { deep: true }); 
+            nextTick(() => lucide.createIcons()); 
+        });
+        
+        watch(activeModal, () => nextTick(() => lucide.createIcons()));
+
+        return {
+            viewMode, game, salaryRecords, salaryStats, sortedRecords,
+            filteredPlants, filteredEncyclopedia, selectedSeed, toasts, showSalaryForm, activeModal,
+            form, computedForm, storeFilter, encyclopediaFilter, unlockedCount, pendingTasks,
+            formattedRealTime, skyStyle, celestialRotation, seasonName, currentBuff, isPayDay, brightness, particles, offlineReport, achievementsList, PLANTS, PLANTS_ARR: FULL_PLANTS, nextLevelXp, weatherInfo,
+            openSalaryForm, addDynamicField, removeDynamicField, autoCalcDeductions, submitSalary, deleteRecord,
+            handlePlotClick, selectSeed, isMature, getGrowthPercent, getGrowthScale, getPlantIcon, getTimeLeft, getTimeLeftSimple, getEstimatedProfit, isUnlocked, isAchievementUnlocked, getAchievementProgress, claimTask,
+            formatMoney, formatNumber, formatDate, formatDuration, editRecord: (r) => openSalaryForm(r),
+            startFocus, giveUpFocus, getFocusDisplayTime, isFocusing, toggleSound, soundEnabled,
+            isDockExpanded, handleDockAction, initAudioContext, activePlotId, fetchRealWeather
+        };
+    }
+}).mount('#app');
+</script>
+</body>
+</html>
